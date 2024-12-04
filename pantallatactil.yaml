@@ -1,0 +1,1140 @@
+substitutions:
+  name: "pantallatactil"
+  friendly_name: PantallaTactil
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2024.6.0
+  name_add_mac_suffix: false
+  project:
+    name: esphome.web
+    version: dev
+
+#packages:
+  #text-sensor: !include diag/diag-text-sensor.yaml
+  #switch: !include diag/diag-switch.yaml
+  #sensor: !include diag/diag-sensor.yaml
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+debug:
+  update_interval: 60s
+
+# Allow Over-The-Air updates
+ota:
+- platform: esphome
+
+# Allow provisioning Wi-Fi via serial
+improv_serial:
+
+wifi:
+  # Set up a wifi access point
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# In combination with the `ap` this allows the user
+# to provision wifi credentials to the device via WiFi AP.
+#captive_portal:
+
+#dashboard_import:
+#  package_import_url: github://esphome/example-configs/esphome-web/esp32.yaml@main
+#  import_full_config: true
+
+# Sets up Bluetooth LE (Only on ESP32) to allow the user
+# to provision wifi credentials to the device.
+#esp32_improv:
+#  authorizer: none
+
+# To have a "next url" for improv serial
+#web_server:
+
+#color:
+#  - id: my_red
+#    hex: 015D52
+#  - id: my_green
+#    red: 0%
+#    green: 100%
+#    blue: 0%
+#  - id: ColorFecha
+#    hex: 4FAA6D
+#  - id: my_blue
+#    red: 0%
+#    green: 0%
+#    blue: 100%
+#  - id: my_yellow
+#    hex: FFFFBF
+#  - id: my_white
+#    red: 100%
+#    green: 100%
+#    blue: 100%
+#  - id: my_gray
+#    hex: 999999
+#  - id: semigris
+#    hex: 58A8C9
+#  - id: color_cuadros
+    #hex: B80F0A
+#    hex: DB291D
+#  - id: real_yellow
+#    hex: FFFF00
+
+font:
+  - file: "materialdesignicons-webfont.ttf"
+    id: roboto_icons_20
+    size: 20
+    bpp: 4
+    extras:
+      - file: "materialdesignicons-webfont.ttf"
+        glyphs: [
+          "\U000F0438", # mdi-radiator
+          "\U000F192C", # mdi-export-tower
+          "\U000F192D", # mdi-import-tower
+          "\U000F1904", # mdi-home-lighting
+          "\U000F1A74", # mdi-solar-power
+          "\U000F07E4", # mdi-co2
+          "\U000F140C", # mdi-power-total
+          "\U000F050F", # thermometer
+          "\U000F058E", # humidity
+          ]
+  - file: "materialdesignicons-webfont.ttf"
+    id: roboto_icons_30
+    size: 30
+    bpp: 4
+    extras:
+      - file: "materialdesignicons-webfont.ttf"
+        glyphs: [
+          "\U000F0438", # mdi-radiator
+          "\U000F192C", # mdi-export-tower
+          "\U000F192D", # mdi-import-tower
+          "\U000F1904", # mdi-home-lighting
+          "\U000F1A74", # mdi-solar-power
+          "\U000F07E4", # mdi-co2
+          "\U000F140C", # mdi-power-total
+          "\U000F050F", # thermometer
+          "\U000F058E", # humidity
+          ]
+
+### SENSORES BINARIOS ###
+binary_sensor:
+
+### CALEFACCION ###
+  - platform: homeassistant
+    id: my_calefaccion
+    entity_id: switch.shellyplus1_calefaccion
+    internal: True
+    publish_initial_state: True
+    on_state:
+      then:
+          - if:
+              condition:
+                lambda: |-
+                  return id(my_calefaccion).state == 1;
+              then:
+                - lvgl.label.update:
+                    id: calefaccion_text
+                    recolor: true
+                    text: "#FFFF00 ON#"
+              else:
+                - lvgl.label.update:
+                    id: calefaccion_text
+                    recolor: true
+                    text: "#666666 OFF#"
+    # on_state: 
+      # then:
+        # - component.update: display_Buhardilla
+
+### LD2410 ###
+  - platform: ld2410
+    has_target:
+      name: Presence
+      id: my_hastarget
+    has_moving_target:
+      name: Moving Target
+      id: my_movingtarget
+    has_still_target:
+      name: Still Target
+      id: my_hasstilltarget
+    out_pin_presence_status:
+      name: out pin presence status
+      id: my_presencestatus
+
+text_sensor:
+  - platform: bme680_bsec
+    iaq_accuracy: 
+      name: "BME680 IAQ Accuracy"
+  
+  - platform: homeassistant
+    id: cover_salon_state
+    entity_id: cover.persiana_salon
+    internal: True
+    attribute: current_position
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              return ((0 == x.compare(std::string{"opening"})) or (0 == x.compare(std::string{"closing"})));
+          then:
+            - lvgl.label.update:
+                id: cov_stop_salon
+                text: "STOP"
+          else:
+            - lvgl.label.update:
+                id: cov_stop_salon
+                text: !lambda |-
+                  //#format: "%.0f%%"
+                  //#args: [ 'id(cover_salon_pos).get_state()' ]
+                  //#args: [ 'id(cover_salon_pos).position' ]
+                  std::string statePersiana;
+                  int valor = 0;
+                  valor = id(cover_salon_pos).state;
+                  statePersiana = std::to_string(valor);
+                  //statePersiana = statePersiana + "%";
+                  return statePersiana;
+        
+
+
+### SENSORES ###
+sensor:
+### LD2410 ###
+  - platform: ld2410
+    light:
+      name: light
+      id: my_light
+    moving_distance:
+      name : Moving Distance
+      id: my_movingdistance
+    still_distance:
+      name: Still Distance
+      id: my_stilldistance
+    moving_energy:
+      name: Move Energy
+      id: my_movingenergy
+    still_energy:
+      name: Still Energy
+      id: my_stillenergy
+    detection_distance:
+      name: Detection Distance
+      id: my_detectiondistance
+    g0:
+      move_energy:
+        name: g0 move energy
+      still_energy:
+        name: g0 still energy
+    g1:
+      move_energy:
+        name: g1 move energy
+      still_energy:
+        name: g1 still energy
+    g2:
+      move_energy:
+        name: g2 move energy
+      still_energy:
+        name: g2 still energy
+    g3:
+      move_energy:
+        name: g3 move energy
+      still_energy:
+        name: g3 still energy
+    g4:
+      move_energy:
+        name: g4 move energy
+      still_energy:
+        name: g4 still energy
+    g5:
+      move_energy:
+        name: g5 move energy
+      still_energy:
+        name: g5 still energy
+    g6:
+      move_energy:
+        name: g6 move energy
+      still_energy:
+        name: g6 still energy
+    g7:
+      move_energy:
+        name: g7 move energy
+      still_energy:
+        name: g7 still energy
+    g8:
+      move_energy:
+        name: g8 move energy
+      still_energy:
+        name: g8 still energy
+### BME680 ###
+  - platform: bme680_bsec
+    bme680_bsec_id: bme680_internal
+
+    temperature:
+      # Temperature in °C
+      name: "BME680 Temperature"
+      sample_rate: lp
+      filters:
+        - median
+    pressure:
+      # Pressure in hPa
+      name: "BME680 Pressure"
+      sample_rate: lp
+      filters:
+        - median
+    humidity:
+      # Relative humidity %
+      name: "BME680 Humidity"
+      sample_rate: lp
+      filters:
+        - median
+    gas_resistance:
+      # Gas resistance in Ω
+      name: "BME680 Gas Resistance"
+      filters:
+        - median
+    iaq:
+      # Indoor air quality value
+      name: "BME680 IAQ"
+      filters:
+        - median
+    iaq_accuracy:
+      # IAQ accuracy as a numeric value of 0, 1, 2, 3
+      name: "BME680 Numeric IAQ Accuracy"
+    co2_equivalent:
+      # CO2 equivalent estimate in ppm
+      name: "BME680 CO2 Equivalent"
+      filters:
+        - median
+    breath_voc_equivalent:
+      # Volatile organic compounds equivalent estimate in ppm
+      name: "BME680 Breath VOC Equivalent"
+      filters:
+        - median
+
+ # - platform: homeassistant
+ #   id: my_cover_salon
+ #   entity_id: cover.persiana_salon
+ #   internal: True
+ #   #publish_initial_state: True
+ #   state_class: total
+ #   unit_of_measurement: "%"
+ #   #device_class: shutter
+ #   on_value:
+ #     then:
+ #        - lvgl.label.update:
+ #            id: estado_persiana_salon
+ #            text: !lambda |-
+ #             int valorEstadoPersiana = id(my_cover_salon).get_state();
+ #             std::string textoEstadoPersiana = std::to_string(valorEstadoPersiana);
+ #             return textoEstadoPersiana;
+  - platform: homeassistant
+    id: my_buhardilla_temperature
+    entity_id: sensor.pantallatactil_bme680_temperature
+    internal: True
+    state_class: measurement
+    unit_of_measurement: °C
+    device_class: temperature
+    on_value:
+      then:
+         - lvgl.label.update:
+             id: temp_text
+             text:
+               format: "%.1f°C"
+               args: [  'x' ]
+  - platform: homeassistant
+    id: my_buhardilla_humidity
+    entity_id: sensor.pantallatactil_bme680_humidity
+    internal: True
+    state_class: measurement
+    unit_of_measurement: "%"
+    device_class: humidity
+    on_value:
+      then:
+         - lvgl.label.update:
+             id: hum_text
+             text:
+               format: "%.1f %%"
+               args: [  'x' ]
+  - platform: homeassistant
+    id: my_buhardilla_pressure
+    entity_id: sensor.pantallatactil_bme680_pressure
+    internal: True
+    state_class: measurement
+    unit_of_measurement: hPa
+    device_class: atmospheric_pressure
+  - platform: homeassistant
+    id: my_buhardilla_co2
+    entity_id: sensor.pantallatactil_bme680_co2_equivalent
+    internal: True
+    state_class: measurement
+    unit_of_measurement: ppm
+    device_class: carbon_dioxide
+    accuracy_decimals: 0
+    on_value:
+      then:
+         - lvgl.label.update:
+            id: CO2_text
+            text: !lambda |-
+              int valueco2 = id(my_buhardilla_co2).state;
+              valueco2 = round (valueco2);
+              std::string textco2 = std::to_string(valueco2);
+              textco2 = textco2 + " ppm.";
+              return textco2;
+  - platform: homeassistant
+    id: my_casa_temperature
+    entity_id: sensor.temp_media_casa
+    internal: True
+    state_class: measurement
+    unit_of_measurement: °C
+    device_class: temperature
+    on_value:
+      then:
+         - lvgl.label.update:
+             id: Casa_temp_value
+             text:
+               format: "%.1f°C"
+               args: [  'x' ]
+  - platform: homeassistant
+    id: my_casa_humidity
+    entity_id: sensor.hum_media_casa
+    internal: True
+    state_class: measurement
+    unit_of_measurement: "%"
+    device_class: humidity
+    on_value:
+      then:
+         - lvgl.label.update:
+             id: Casa_hum_value
+             text:
+               format: "%.1f %%"
+               args: [  'x' ]
+  - platform: homeassistant
+    id: my_jardin_temperature
+    entity_id: sensor.jardin_temperature
+    internal: True
+    state_class: measurement
+    unit_of_measurement: °C
+    device_class: temperature
+    on_value:
+      then:
+         - lvgl.label.update:
+             id: Jardin_temp_value
+             text:
+               format: "%.1f°C"
+               args: [  'x' ]
+  - platform: homeassistant
+    id: my_jardin_humidity
+    entity_id: sensor.jardin_humidity
+    internal: True
+    state_class: measurement
+    unit_of_measurement: "%"
+    device_class: humidity
+    on_value:
+      then:
+         - lvgl.label.update:
+             id: Jardin_hum_value
+             text:
+               format: "%.1f %%"
+               args: [  'x' ]
+  - platform: homeassistant
+    id: my_consumo_electrico
+    entity_id: sensor.homekit_91000hku21600307
+    internal: True
+    state_class: measurement
+    unit_of_measurement: W
+    device_class: power_factor
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: consumo_text
+            text:
+              format: "#FFFFFF %.0f# W."
+              args: [  'x' ]
+        - script.execute: electric_update
+  - platform: homeassistant
+    id: my_generacion_electrica
+    entity_id: sensor.inverter_inversor
+    internal: True
+    state_class: measurement
+    unit_of_measurement: W
+    device_class: power_factor
+    on_value:
+      then:
+        - lvgl.label.update:
+            id: generacion_text
+            text:
+              format: "#FFFFFF %.0f# W."
+              args: [  'x' ]
+        - script.execute: electric_update
+  - platform: homeassistant
+    name: "Temperatura Salón"
+    entity_id: sensor.buhardilla_temperature
+    id: ha_salon_temperatura
+    internal: True
+    #on_value:
+    #  then:
+    #    - lvgl.label.update:
+    #        id: lvgl_label_temperatura
+    #        text: 
+    #          format: "%.1f \xB0C"
+    #          args:
+    #            - id(ha_salon_temperatura).state
+#        - lvgl.indicator.update:
+#           id: lvgl_line_temperatura
+#            value: !lambda return id(ha_salon_temperatura).state;
+
+#### PRUEBAS PARA PERSIANAS ####
+  - platform: homeassistant
+    id: cover_salon_pos
+    entity_id: cover.persiana_salon
+    attribute: current_position
+    internal: True
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              return x == 100;
+          then:
+            - lvgl.widget.update:
+                id: cov_up_salon
+                text_opa: 60%
+          else:
+            - lvgl.widget.update:
+                id: cov_up_salon
+                text_opa: 100%
+      - if:
+          condition:
+            lambda: |-
+              return x == 0;
+          then:
+            - lvgl.widget.update:
+                id: cov_down_salon
+                text_opa: 60%
+          else:
+            - lvgl.widget.update:
+                id: cov_down_salon
+                text_opa: 100%
+
+# configuración SPI
+spi:
+  - id: spi_tft
+    clk_pin: GPIO14
+    mosi_pin: GPIO13
+    miso_pin: GPIO12
+  - id: spi_touch
+    clk_pin: GPIO25
+    mosi_pin: GPIO32
+    miso_pin: GPIO39
+
+i2c:
+  sda: GPIO18
+  scl: GPIO19
+  scan: true
+  id: bus_a
+
+# configuración UART
+uart:
+  tx_pin: GPIO27
+  rx_pin: GPIO22
+  baud_rate: 256000
+  parity: NONE
+  stop_bits: 1
+
+ld2410:
+  id: SensorPresenciaBuhardilla
+
+bme680_bsec:
+    id: bme680_internal
+    address: 0x77
+    temperature_offset: 0
+    iaq_mode: static
+    supply_voltage: 3.3V
+    sample_rate: ulp
+    state_save_interval: 6h
+
+### RELOJ ###
+time:
+  - platform: homeassistant
+    id: sntp_time
+    on_time_sync:
+      - script.execute: time_update
+    on_time:
+      - minutes: '*'
+        seconds: 0
+        then:
+          - script.execute: time_update
+
+### SCRIPTS ###
+script:
+  - id: time_update
+    then:
+      - lvgl.label.update:
+          id: hora
+          text: !lambda |-
+            char str[17];
+            time_t currTime = id(sntp_time).now().timestamp;
+            strftime(str, sizeof(str), "%H:%M", localtime(&currTime));
+            return str;
+      - lvgl.label.update:
+          id: fecha
+          text: !lambda |-
+            char str[17];
+            time_t currTime = id(sntp_time).now().timestamp;
+            strftime(str, sizeof(str), "%d-%m-%Y", localtime(&currTime));
+            return str;
+  - id: electric_update
+    then:
+      - lvgl.label.update:
+          id: total_consumo_text
+          recolor: true
+          text: !lambda |-
+            int diferenciaConsumo = 0;
+            diferenciaConsumo = id(my_consumo_electrico).state - id(my_generacion_electrica).state;
+            std::string strDiferenciaConsumo = std::to_string(diferenciaConsumo);
+            std::string colorGasto = "#FF0000 ";
+            std::string colorGeneracion = "#00FF00 ";
+            std::string preText = "";
+            if (diferenciaConsumo > 0) {
+              preText = preText + colorGasto;
+            } else {
+              preText = preText + colorGeneracion;
+            }
+            std::string postText = "# W.";
+            strDiferenciaConsumo = preText + strDiferenciaConsumo;
+            strDiferenciaConsumo = strDiferenciaConsumo + postText;
+            return strDiferenciaConsumo;
+
+
+# Configuración pantalla táctil
+touchscreen:
+  platform: xpt2046
+  id: main_touch
+  spi_id: spi_touch
+  cs_pin: GPIO33
+  interrupt_pin: GPIO36
+  calibration:
+    x_min: 280
+    x_max: 3800
+    y_min: 260
+    y_max: 3770
+  transform:
+    mirror_x: false
+    mirror_y: false
+    swap_xy: true
+  ##ESTO DE DEBAJO ES PARA CALIBRAR##
+  #on_touch:
+  #  - lambda: |-
+  #        ESP_LOGI("cal", "x=%d, y=%d, x_raw=%d, y_raw=%0d",
+  #            touch.x,
+  #            touch.y,
+  #            touch.x_raw,
+  #            touch.y_raw
+  #            );
+
+# Luz trasera pantalla
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    name: Display Backlight
+    id: backlight
+    restore_mode: ALWAYS_ON
+  - platform: rgb
+    name: "STATUS LED"
+    restore_mode: ALWAYS_ON
+    red: output_component1
+    green: output_component2
+    blue: output_component3
+    id: test_id
+ 
+# Pines para controlar la luz trasera
+output:
+  - platform: ledc
+    pin: GPIO21
+    id: backlight_pwm
+  - platform: ledc
+    pin: GPIO17
+    id: output_component1
+    min_power: 0
+    max_power: 1
+  - platform: ledc
+    pin: GPIO4
+    id: output_component2
+    min_power: 0
+    max_power: 1
+  - platform: ledc
+    pin: GPIO16
+    id: output_component3
+    min_power: 0
+    max_power: 1
+
+# Configuración Display
+display:
+  - platform: ili9xxx
+    id: display_Buhardilla
+    model: ILI9341
+    spi_id: spi_tft
+    auto_clear_enabled: false
+    update_interval: never
+    invert_colors: false
+    dimensions:
+      height: 240
+      width: 320
+    #transform:
+    #  swap_xy: false
+    #  mirror_x: false
+    #  mirror_y: false
+    rotation: 180
+    color_order: RGB
+      
+    cs_pin: GPIO15
+    dc_pin: GPIO2
+
+# ===============================================
+# =============== LVGL ==========================
+# ===============================================
+
+lvgl:
+  displays:
+    - display_Buhardilla
+  touchscreens:
+    - main_touch
+  buffer_size: 25%
+  bg_color: 0x000000
+  ### ESTILOS ###
+  style_definitions:
+    - id: meter_style
+    - id: font_style
+      text_font: MONTSERRAT_24
+      align: center
+      text_color: 0xFFFFFF
+      bg_opa: TRANSP
+      bg_color: 0
+      radius: 4
+      pad_all: 2
+    - id: font_style_fecha
+      text_font: MONTSERRAT_24
+      align: center
+      text_color: 0x444444
+      bg_opa: TRANSP
+      bg_color: 0
+      radius: 4
+      pad_all: 2
+    - id: font_style_texto
+      text_font: MONTSERRAT_20
+      align: center
+      text_color: 0xFFFFFF
+      bg_opa: TRANSP
+      bg_color: 0
+      radius: 4
+      pad_all: 2
+  ### PAGINAS ###
+  pages:
+    - id: pagina_principal
+      widgets:
+        ### CUADRO HORA TEMP HUM y FECHA ###
+        - obj:
+            height: 30
+            width: 318
+            bg_color: 0
+            border_width: 2
+            border_color: 0xFF0000
+            outline_width: 0
+            shadow_width: 0
+            scrollbar_mode: "OFF"
+            pad_all: 4
+            align: TOP_LEFT
+            widgets:
+              # Medidor de arco con colores graduales
+              # - meter: #Gradient color arc
+                  # height: 120  # Reducir el tamaño a la mitad
+                  # width: 120
+                  # align: center
+                  # bg_color: 0
+                  # styles: meter_style
+                  # scales:
+                    # angle_range: 180  # Solo la mitad del círculo
+                    # range_to: 3000
+                    # range_from: 0
+                    # ticks:
+                      # color: 0xFFFFFFF
+                      # count: 30
+                      # length: 15
+                      # width: 2
+                      # major:
+                        # stride: 6
+                        # width: 2 
+                        # length: 10
+                        # color: 0x404040
+                        # #label_gap: -30
+                    # indicators:
+                      # - line: #MEDIDOR GENERACION
+                          # id: power_meter_input
+                          # width: 3
+                          # color: 0x00FF00
+                          # r_mod: 10
+                          # value: 1500
+                      # - line: #MEDIDOR CONSUMO
+                          # id: power_meter_consumo
+                          # width: 6
+                          # color: 0xFF0000
+                          # r_mod: 10
+                          # value: 1500
+                      # - tick_style:
+                          # start_value: 0
+                          # end_value: 3000
+                          # color_start: 0x80FF00
+                          # color_end: 0xBD0000
+                          # width: 1
+                      # #- arc:
+                      # #    color: 0x9DFFA3  # Color inicial (verde)
+                      # #    r_mod: 12
+                      # #    width: 8
+                      # #    start_value: 0
+                      # #    end_value: 1000
+                      # #- arc:
+                      # #    color: 0xFFFF00  # Color intermedio (amarillo)
+                      # #    r_mod: 12
+                      # #    width: 8
+                      # #    start_value: 1000
+                      # #    end_value: 2000
+                      # #- arc:
+                      # #    color: 0xFF9D9D  # Color final (rojo)
+                      # #    r_mod: 12
+                      # #    width: 8
+                      # #    start_value: 2000
+                      # #    end_value: 3000
+                      # #- arc:
+                      # #    color: 0xABCDEF0
+                      # #    opa: 100%
+                      # #    width: 10
+                      # #    start_value: 3000
+                      # #    end_value: 6000
+              - label:
+                  styles: font_style
+                  text_font: MONTSERRAT_16
+                  align: LEFT_MID
+                  id: hora
+                  text: "XX:XX"
+              - label:
+                  styles: font_style_fecha
+                  text_font: MONTSERRAT_16
+                  align: RIGHT_MID
+                  id: fecha
+                  text: "XX-XX-XXXX"
+              - label:
+                  styles: font_style
+                  text_font: roboto_icons_20
+                  align: CENTER
+                  x: -87
+                  y: 0
+                  text: "\U000F050F"
+              - label:
+                  styles: font_style
+                  text_font: MONTSERRAT_18
+                  align: CENTER
+                  x: -50
+                  y: 0
+                  id: temp_text
+                  text: "XX.X °C"
+              - label:
+                  styles: font_style
+                  text_font: roboto_icons_20
+                  align: CENTER
+                  x: -3
+                  y: 0
+                  text: "\U000F058E"
+              - label:
+                  styles: font_style
+                  text_font: MONTSERRAT_12
+                  align: CENTER
+                  x: 25
+                  y: 0
+                  id: hum_text
+                  text: "XX.X %"
+        ### CUADRO ENERGIA ###
+        - obj:
+            height: 108
+            width: 155
+            x: 0
+            y: 35  
+            bg_color: 0
+            border_width: 2
+            border_color: 0xFF0000
+            outline_width: 0
+            shadow_width: 0
+            scrollbar_mode: "OFF"
+            styles: font_style_texto
+            pad_all: 4
+            align: TOP_LEFT
+            widgets:
+              #- label:
+              #    x: 0
+              #    y: 1
+              #    text_color: 0x555555
+              #    id: consumo_title
+              #    text: "   Cons: "
+              - label:
+                  x: 9
+                  y: 1
+                  text_color: 0x555555
+                  text_font: roboto_icons_20
+                  id: consumo_title_icon
+                  text: "\U000F192C\U000F1904"
+              - label:
+                  x: 69
+                  y: 1
+                  text_color: 0x555555
+                  id: consumo_text
+                  recolor: true
+                  text: "XXXX W."
+              #- label:
+              #    x: 0
+              #    y: 17
+              #    text_color: 0x555555
+              #    id: generacion_title
+              #    text: "   Gen: "
+              - label:
+                  x: 8
+                  y: 24
+                  text_color: 0x555555
+                  id: generacion_title
+                  text_font: roboto_icons_20
+                  text: "\U000F1A74\U000F1904"
+              - label:
+                  x: 69
+                  y: 24
+                  text_color: 0x555555
+                  id: generacion_text
+                  recolor: true
+                  text: "XXXX W."
+              - label:
+                  x: 20
+                  y: 51
+                  text_color: 0x555555
+                  text_font: MONTSERRAT_14
+                  id: total_consumo_title
+                  text: "Total:"
+              - label:
+                  x: 2
+                  y: 49
+                  text_color: 0x555555
+                  id: total_consumo_icon
+                  text_font: roboto_icons_20
+                  text: "\U000F140C"
+              - label:
+                  x: 69
+                  y: 47
+                  text_color: 0x555555
+                  recolor: true
+                  id: total_consumo_text
+                  text: "XXXX W."
+              - label:
+                  x: 3
+                  y: 71
+                  text_color: 0x555555
+                  id: calefaccion_icon
+                  text_font: roboto_icons_20
+                  text: "\U000F0438"
+              - label:
+                  x: 26
+                  y: 73
+                  text_color: 0x555555
+                  text_font: MONTSERRAT_14
+                  id: calefaccion_title
+                  text: "Calef: "
+              #- label:
+              #    x: 76
+              #    y: 69
+              #    text_color: 0x555555
+              #    id: calefaccion_text
+              #    text: "XXX"
+              - button:
+                  x: 76
+                  y: 69
+                  width: 50
+                  height: 23
+                  bg_color: 0x1111111
+                  widgets:
+                    - label:
+                        id: calefaccion_text
+                        align: CENTER
+                        text: "OFF"
+                  on_press:
+                    then:
+                      - homeassistant.action:
+                          action: switch.toggle
+                          data:
+                            entity_id: switch.shellyplus1_calefaccion
+                  
+
+        ### CUADRO CO2 y TEMPS ###
+        - obj:
+            height: 108
+            width: 155
+            x: 160
+            y: 35  
+            bg_color: 0
+            border_width: 2
+            border_color: 0xFF0000
+            outline_width: 0
+            shadow_width: 0
+            scrollbar_mode: "OFF"
+            styles: font_style_texto
+            pad_all: 4
+            align: TOP_LEFT
+            widgets:
+              - label:
+                  x: 2
+                  y: -5
+                  text_color: 0x555555
+                  id: CO2_TITLE
+                  text_font: roboto_icons_30
+                  text: "\U000F07E4"
+              - label:
+                  x: 43
+                  y: 0
+                  text_color: 0x555555
+                  id: CO2_text
+                  text: "XXXX ppm"
+              - label:
+                  x: 0
+                  y: 27
+                  text_color: 0x555555
+                  text_font: MONTSERRAT_12
+                  id: Jardin_text
+                  text: "Jardin: "
+              - label:
+                  x: 47
+                  y: 25
+                  text_color: 0x555555
+                  text_font: MONTSERRAT_16
+                  id: Jardin_temp_value
+                  text: "XX.X°C"
+              - label:
+                  x: 102
+                  y: 27
+                  text_color: 0x555555
+                  text_font: MONTSERRAT_12
+                  id: Jardin_hum_value
+                  text: "XX.X %"
+              - label:
+                  x: 0
+                  y: 48
+                  text_color: 0x555555
+                  text_font: MONTSERRAT_12
+                  id: Casa_text
+                  text: "Casa: "
+              - label:
+                  x: 47
+                  y: 46
+                  text_color: 0x555555
+                  text_font: MONTSERRAT_16
+                  id: Casa_temp_value
+                  text: "XX.X°C"
+              - label:
+                  x: 102
+                  y: 48
+                  text_color: 0x555555
+                  text_font: MONTSERRAT_12
+                  id: Casa_hum_value
+                  text: "XX.X %"
+        ### CUADRO PERSIANAS ###
+        - obj:
+            height: 80
+            width: 315
+            x: 0
+            y: 148  
+            bg_color: 0
+            border_width: 2
+            border_color: 0xFF0000
+            outline_width: 0
+            shadow_width: 0
+            scrollbar_mode: "OFF"
+            styles: font_style_texto
+            pad_all: 4
+            align: TOP_LEFT
+            widgets:
+              #- label:
+              #    x: 10
+              #    y: 6
+              #    width: 70
+              #    text: "Salon"
+              #    text_font: MONTSERRAT_8
+              #    text_align: CENTER
+              - button:
+                  x: 0
+                  y: 0
+                  width: 60
+                  height: 54
+                  widgets:
+                    - label:
+                        id: cov_up_salon
+                        align: CENTER
+                        text: "\uF077"
+                  on_press:
+                    then:
+                      - homeassistant.action:
+                          action: cover.open_cover
+                          data:
+                            entity_id: cover.persiana_salon
+              - button:
+                  x: 63
+                  y: 0
+                  width: 180
+                  height: 54
+                  widgets:
+                    - label:
+                        id: cov_stop_salon
+                        align: CENTER
+                        text: STOP
+                  on_press:
+                    then:
+                      - homeassistant.action:
+                          action: cover.stop_cover
+                          data:
+                            entity_id: cover.persiana_salon
+                      ### ESTO ES SOLO PARA DEBUG 
+                      #- lvgl.label.update:
+                      #    id: cov_stop_salon
+                      #    text: !lambda |-
+                      #        //#format: "%.0f%%"
+                      #        //#args: [ 'id(cover_salon_pos).get_state()' ]
+                      #        //#args: [ 'id(cover_salon_pos).position' ]
+                      #        std::string statePersiana;
+                      #        int valor = 0;
+                      #        valor = id(cover_salon_pos).state;
+                      #        statePersiana = std::to_string(valor);
+                      #        //statePersiana = statePersiana + "%";
+                      #        return statePersiana;
+              - button:
+                  x: 244
+                  y: 0
+                  width: 60
+                  height: 54
+                  widgets:
+                    - label:
+                        id: cov_down_salon
+                        align: CENTER
+                        text: "\uF078"
+                  on_press:
+                    then:
+                      - homeassistant.action:
+                          action: cover.close_cover
+                          data:
+                            entity_id: cover.persiana_salon
+              #- label:
+              #    x: 0
+              #    y: 104
+              #    recolor: true
+              #    id: COLOR_TEST
+              #    text: "#FF0000 ROJO# #00FF00 VERDE# #0000FF AZUL#"
+              #- label:
+              #    x: 0
+              #    y: 131
+              #    recolor: true
+              #    id: COLOR_TEST2
+              #    text: "#FFFF00 AMARILLO# #FF00FF ROSA# #00FFFF CYAN#"
